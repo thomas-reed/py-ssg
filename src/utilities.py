@@ -1,6 +1,16 @@
 import re
+from enum import Enum
 from textnode import TextType, TextNode
 from leafnode import LeafNode
+from parentnode import ParentNode
+
+class BlockType(Enum):
+  PARAGRAPH = "paragraph"
+  HEADING = "heading"
+  CODE = "code"
+  QUOTE = "quote"
+  UNORDERED_LIST = "unordered_list"
+  ORDERED_LIST = "ordered_list"
 
 def text_node_to_html_node(text_node):
   match text_node.text_type:
@@ -112,4 +122,150 @@ def markdown_to_blocks(text):
         text.split('\n\n')
       )
     )
+  )
+
+def isHeading(block):
+  return re.match(r"^#{1,6} .+", block) is not None
+
+def isCodeBlock(block):
+  return re.fullmatch(r"^```[\s\S]*?```$", block) is not None
+
+def isQuoteBlock(block):
+  return re.fullmatch(r'(?:^\s*>.*\n?)+$', block, re.MULTILINE) is not None
+
+def isUnorderedList(block):
+  return re.fullmatch(r'^(?:\s*- .+\n?)+$', block, re.MULTILINE) is not None
+
+def isOrderedList(block):
+  return re.fullmatch(r'^(?:\s*\d+\. .+\n?)+$', block, re.MULTILINE) is not None
+
+def block_to_block_type(md_block):
+  checker_map = [
+    (isHeading, BlockType.HEADING),
+    (isCodeBlock, BlockType.CODE),
+    (isQuoteBlock, BlockType.QUOTE),
+    (isUnorderedList, BlockType.UNORDERED_LIST),
+    (isOrderedList, BlockType.ORDERED_LIST),
+  ]
+
+  for checker, block_type in checker_map:
+      if checker(md_block):
+          return block_type
+  return BlockType.PARAGRAPH
+
+def handle_block_type(block_type, block):
+  match block_type:
+    case BlockType.CODE:
+      cleaned_block = block.strip("`").lstrip("\n")
+      return ParentNode(
+        "pre",
+        map(
+          text_node_to_html_node,
+          [
+            TextNode(
+              cleaned_block,
+              TextType.CODE
+            )
+          ],
+        ),
+      )
+
+    case BlockType.PARAGRAPH:
+      cleaned_block = block.replace("\n", " ")
+      return ParentNode(
+        "p",
+        map(
+          text_node_to_html_node,
+          text_to_textnodes(cleaned_block),
+        ),
+      )
+
+    case BlockType.HEADING:
+      i = 0
+      while block[i] == '#':
+        i += 1
+      cleaned_block = block.lstrip("# ")
+      return ParentNode(
+        f"h{i}",
+        map(
+          text_node_to_html_node,
+          text_to_textnodes(cleaned_block),
+        ),
+      )
+
+    case BlockType.QUOTE:
+      quote_text = " ".join(
+        map(
+          lambda line: re.sub(r'^\s*>\s*', '', line),
+          block.splitlines(),
+        )
+      )
+      return ParentNode(
+        "blockquote",
+        map(
+          text_node_to_html_node,
+          text_to_textnodes(quote_text),
+        ),
+      )
+
+    case BlockType.UNORDERED_LIST:
+      cleaned_block = "\n".join(
+        map(
+          lambda line: re.sub(r'^\s*-\s*', '', line),
+          block.splitlines(),
+        )
+      )
+      child_list = list(
+        map(
+          lambda line: ParentNode(
+            "li",
+            map(
+              text_node_to_html_node,
+              text_to_textnodes(line),
+            ),
+          ),
+          cleaned_block.splitlines(),
+        )
+      )
+      return ParentNode(
+        "ul",
+        child_list,
+      )
+
+    case BlockType.ORDERED_LIST:
+      cleaned_block = "\n".join(
+        map(
+          lambda line: re.sub(r'^\s*\d+\.\s*', '', line),
+          block.splitlines(),
+        )
+      )
+      child_list = list(
+        map(
+          lambda line: ParentNode(
+            "li",
+            map(
+              text_node_to_html_node,
+              text_to_textnodes(line),
+            ),
+          ),
+          cleaned_block.splitlines(),
+        )
+      )
+      return ParentNode(
+        "ol",
+        child_list,
+      )
+      
+    case _:
+      raise Exception("invalid BlockType")
+
+def markdown_to_html_node(markdown):
+  md_blocks = markdown_to_blocks(markdown)
+  html_nodes = []
+  for block in md_blocks:
+    block_type = block_to_block_type(block)
+    html_nodes.append(handle_block_type(block_type, block))
+  return ParentNode(
+    "div",
+    html_nodes,
   )
