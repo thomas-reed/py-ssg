@@ -4,18 +4,18 @@ import shutil
 from textnode import TextNode, TextType
 from utilities import (generate_page)
 
-def copy_static_files_to_public():
-  if os.path.exists("public"):
+def copy_static_files_to_public(output_dir):
+  if os.path.exists(output_dir):
     print("Removing existing public directory", end="...")
     try:
-      shutil.rmtree("public")
+      shutil.rmtree(output_dir)
     except Exception as e:
       print(f"Error:\n{e}")
     print("Done!")
-  copy_static_recursive("static")
+  copy_static_recursive("static", output_dir)
   
-def copy_static_recursive(source):
-  destination = os.path.join("public", "/".join(source.split("/")[1:]))
+def copy_static_recursive(source, output_dir):
+  destination = os.path.join(output_dir, "/".join(source.split("/")[1:]))
   print(f"Copying {source} to {destination}", end="...")
   if os.path.isfile(source):
     try:
@@ -29,7 +29,7 @@ def copy_static_recursive(source):
     content_list = os.listdir(source)
     for item in content_list:
       path = os.path.join(source, item)
-      copy_static_recursive(path)
+      copy_static_recursive(path, output_dir)
 
 def generate_pages_recursive(
   dir_path_content,
@@ -63,11 +63,12 @@ def generate_pages_recursive(
 def main():
   # first cmd line arg should be the root path for site if different from '/'
   basepath = sys.argv[1] if len(sys.argv) >= 2 else "/"
-  copy_static_files_to_public()
+  output_dir = "docs"
+  copy_static_files_to_public(output_dir)
   generate_pages_recursive(
     "content",
     "template.html",
-    "docs",
+    output_dir,
     basepath,
   )
 
