@@ -1,4 +1,5 @@
 import re
+import os
 from enum import Enum
 from textnode import TextType, TextNode
 from leafnode import LeafNode
@@ -269,3 +270,30 @@ def markdown_to_html_node(markdown):
     "div",
     html_nodes,
   )
+
+def extract_title(markdown):
+  blocks = markdown_to_blocks(markdown)
+  for block in blocks:
+    if not isHeading(block):
+      continue
+    if block[1] == "#":
+      continue
+    return block[1:].strip()
+    
+def generate_page(from_path, template_path, dest_path):
+  print(f"Generating page from {from_path} to {dest_path} using {template_path}", end="...")
+  with open(from_path, encoding="utf-8") as f:
+    md = f.read()
+  with open(template_path, encoding="utf-8") as f:
+    template = f.read()
+  md_html = markdown_to_html_node(md).to_html()
+  title = extract_title(md)
+  page_html = template.replace("{{ Title }}", title)
+  page_html = page_html.replace("{{ Content }}", md_html)
+  parent_dirs = os.path.dirname(dest_path)
+  if parent_dirs:
+    os.makedirs(parent_dirs, exist_ok=True)
+  with open(dest_path, 'w', encoding="utf-8") as f:
+    f.write(page_html)
+  print("Done!")
+  

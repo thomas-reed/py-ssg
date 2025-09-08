@@ -12,6 +12,7 @@ from utilities import (
   markdown_to_blocks,
   block_to_block_type,
   markdown_to_html_node,
+  extract_title,
 )
 
 class TestUtilities(unittest.TestCase):
@@ -495,6 +496,30 @@ Here's some other text under the italicized H3 heading
       html,
       "<div><ol><li>ordered list item 1 that has some <i>italic</i> text</li><li>ordered list item 2 that has some <b>bold</b> text</li><li>ordered list item 3 that has some <code>code</code></li></ol></div>",
     )
+
+  def test_extract_title(self):
+    md = """
+## This is not the title
+
+### This is not the title either
+
+[this is a link](https://www.google.com)
+
+# This is the title
+
+# This could be considered a title
+"""
+    self.assertEqual(extract_title(md), "This is the title")
+
+  def test_extract_title_bad_spacing(self):
+    md = """
+## This is not the title
+
+      # This is the title
+"""
+    self.assertEqual(extract_title(md), "This is the title")
+
+
 
 if __name__ == "__main__":
   unittest.main()
