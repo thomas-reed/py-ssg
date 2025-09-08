@@ -280,7 +280,7 @@ def extract_title(markdown):
       continue
     return block[1:].strip()
     
-def generate_page(from_path, template_path, dest_path):
+def generate_page(from_path, template_path, dest_path, basepath):
   print(f"Generating page from {from_path} to {dest_path} using {template_path}", end="...")
   with open(from_path, encoding="utf-8") as f:
     md = f.read()
@@ -290,6 +290,8 @@ def generate_page(from_path, template_path, dest_path):
   title = extract_title(md)
   page_html = template.replace("{{ Title }}", title)
   page_html = page_html.replace("{{ Content }}", md_html)
+  page_html = page_html.replace('href="/', f'href="{basepath}')
+  page_html = page_html.replace('src="/', f'src="{basepath}')
   parent_dirs = os.path.dirname(dest_path)
   if parent_dirs:
     os.makedirs(parent_dirs, exist_ok=True)
